@@ -1,10 +1,25 @@
-# Pharma Inventory Intelligence — Prototype
+<div align="center">
+
+# 💊 Pharma Inventory Intelligence — Prototype
+
+### Reorder · slow-moving · expiry-risk · management views for a pharma distribution business
+
+[![View Live Demo](https://img.shields.io/badge/▶_View_Live_Demo-137a63?style=for-the-badge&logoColor=white)](https://jithinjolly2000-maker.github.io/pharma-inventory-dashboard/)
+
+![Built with](https://img.shields.io/badge/Built_with-Vanilla_JS-f7df1e?style=flat-square&logo=javascript&logoColor=black)
+![No dependencies](https://img.shields.io/badge/Dependencies-none-0a7a52?style=flat-square)
+![Hosting](https://img.shields.io/badge/Hosted_on-GitHub_Pages-222?style=flat-square&logo=github)
+![Data](https://img.shields.io/badge/Data-synthetic_demo-b5841f?style=flat-square)
+
+</div>
+
+---
 
 A working prototype of an **inventory-planning dashboard for a pharmaceutical distribution business**. It identifies slow-moving stock, recommends reorders, and flags products at risk of expiry — with role-based views for billers, purchasers, accounts and management.
 
 Built as a proof-of-concept to demonstrate the approach on **sample data**. In production it reads live from the ERP / SQL database via API.
 
-> **Live demo:** open `index.html` in any browser — no setup, no install. Runs entirely client-side on dummy data (no real records).
+> **Live demo:** [jithinjolly2000-maker.github.io/pharma-inventory-dashboard](https://jithinjolly2000-maker.github.io/pharma-inventory-dashboard/) — or open `index.html` locally. Runs entirely client-side on dummy data (no real records).
 
 ---
 
