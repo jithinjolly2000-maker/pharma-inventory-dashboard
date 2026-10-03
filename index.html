@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pharma Inventory Intelligence — Prototype</title>
+<style>
+  :root{
+    --bg:#0e1420;--panel:#162130;--panel2:#1d2a3c;--line:#2a3b52;--ink:#e8eef6;--muted:#93a4bd;--dim:#64748b;
+    --teal:#2dd4bf;--amber:#fbbf24;--red:#f87171;--green:#34d399;--blue:#60a5fa;--mono:'Consolas',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+  header{background:linear-gradient(135deg,#111a28,#0e1420);border-bottom:1px solid var(--line);padding:20px 26px}
+  header h1{font-size:21px;font-weight:800}
+  header h1 span{color:var(--teal)}
+  header .sub{color:var(--muted);font-size:13px;margin-top:3px}
+  header .demo{display:inline-block;margin-top:8px;background:#3a2a0a;border:1px solid #6b4e12;color:#fbbf24;font-size:11.5px;padding:3px 10px;border-radius:20px}
+  .wrap{max-width:1200px;margin:0 auto;padding:20px 26px 60px}
+
+  /* role tabs */
+  .roles{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}
+  .role{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;transition:.15s}
+  .role:hover{border-color:#3a506e;color:var(--ink)}
+  .role.active{background:var(--teal);color:#06231f;border-color:var(--teal)}
+  .role small{display:block;font-size:10.5px;font-weight:500;opacity:.8}
+
+  /* KPI cards */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden}
+  .kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--teal)}
+  .kpi.red::before{background:var(--red)}.kpi.amber::before{background:var(--amber)}.kpi.green::before{background:var(--green)}.kpi.blue::before{background:var(--blue)}
+  .kpi .v{font-size:26px;font-weight:800;letter-spacing:-.5px}
+  .kpi .l{color:var(--muted);font-size:12px;margin-top:2px}
+
+  .view{display:none}.view.active{display:block}
+  .view h2{font-size:16px;margin:6px 0 12px;display:flex;align-items:center;gap:9px}
+  .view h2 .pill{font-size:11px;font-weight:700;background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:20px;padding:2px 9px}
+  .view .desc{color:var(--muted);font-size:13px;margin-bottom:14px}
+
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:13px}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{background:var(--panel2);color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;cursor:pointer;user-select:none}
+  th:hover{color:var(--ink)}
+  tbody tr:hover{background:#1a2636}
+  td.num{font-family:var(--mono);text-align:right}
+  .badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;display:inline-block}
+  .b-red{background:rgba(248,113,113,.15);color:var(--red)}
+  .b-amber{background:rgba(251,191,36,.15);color:var(--amber)}
+  .b-green{background:rgba(52,211,153,.15);color:var(--green)}
+  .b-blue{background:rgba(96,165,250,.15);color:var(--blue)}
+  .action{color:var(--teal);font-weight:600}
+  .foot{color:var(--dim);font-size:11.5px;margin-top:26px;border-top:1px solid var(--line);padding-top:14px}
+  .bar{height:7px;border-radius:4px;background:var(--panel2);overflow:hidden;min-width:70px}
+  .bar>span{display:block;height:100%;background:var(--teal)}
+</style>
+</head>
+<body>
+<header>
+  <h1><span>◉</span> Pharma Inventory Intelligence</h1>
+  <div class="sub">Reorder · Slow-moving · Expiry-risk · Management — role-based views on ERP data</div>
+  <span class="demo">PROTOTYPE · runs on sample data · no real records</span>
+</header>
+
+<div class="wrap">
+  <div class="roles" id="roles">
+    <div class="role active" data-v="reorder">🔄 Reorder<small>Billers · Purchasers</small></div>
+    <div class="role" data-v="slow">🐢 Slow-moving<small>Purchasers · Mgmt</small></div>
+    <div class="role" data-v="expiry">⏳ Expiry risk<small>Billers · Accounts</small></div>
+    <div class="role" data-v="mgmt">📊 Management<small>Leadership roll-up</small></div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <!-- REORDER -->
+  <div class="view active" id="v-reorder">
+    <h2>Reorder recommendations <span class="pill">rule + judgement</span></h2>
+    <div class="desc">Predicts demand over each supplier's lead time + safety stock. Rule flags "reorder now"; a human confirms the quantity.</div>
+    <table id="t-reorder"></table>
+  </div>
+
+  <!-- SLOW -->
+  <div class="view" id="v-slow">
+    <h2>Slow-moving stock <span class="pill">days-of-cover + trend</span></h2>
+    <div class="desc">Flags SKUs with days-of-cover above threshold, with a movement trend so it's not just a flat cutoff.</div>
+    <table id="t-slow"></table>
+  </div>
+
+  <!-- EXPIRY -->
+  <div class="view" id="v-expiry">
+    <h2>Expiry risk — return for credit note <span class="pill">3-month flag + sell-through</span></h2>
+    <div class="desc">Auto-flags batches within 3 months of expiry. Prioritises by whether current sell-through will clear the batch in time; builds the return/credit-note action list per supplier.</div>
+    <table id="t-expiry"></table>
+  </div>
+
+  <!-- MGMT -->
+  <div class="view" id="v-mgmt">
+    <h2>Management roll-up <span class="pill">value at risk</span></h2>
+    <div class="desc">Stock value at risk, reorder volume and expiry exposure across the business.</div>
+    <table id="t-mgmt"></table>
+  </div>
+
+  <div class="foot">
+    Prototype by Jithin J · built to demonstrate the approach on sample data. In production this reads live from the ERP/SQL via API.
+    Logic shown: reorder = demand over lead time + safety stock; expiry = flagged 3 months out, prioritised by sell-through; slow-moving = days-of-cover + trend.
+  </div>
+</div>
+
+<script>
+// ---- SAMPLE DATA (dummy pharma SKUs; no real records) ----
+// Fields mirror a typical ERP export: stock on hand, avg daily sales, supplier + lead time, batch expiry, unit cost.
+const today = new Date('2026-10-03');
+const SKUS = [
+  {sku:'PH-AMOX-500', name:'Amoxicillin 500mg (10x10)', supplier:'MediCorp', lead:7,  stock:120, ads:18, min:150, max:600, cost:42,  expiry:'2027-06-30'},
+  {sku:'PH-PARA-650', name:'Paracetamol 650mg (15x10)', supplier:'HealWell', lead:5,  stock:900, ads:60, min:400, max:1500,cost:12,  expiry:'2026-12-20'},
+  {sku:'PH-AZItH-250',name:'Azithromycin 250mg (3x10)', supplier:'MediCorp', lead:10, stock:40,  ads:9,  min:80,  max:300, cost:95,  expiry:'2026-11-15'},
+  {sku:'PH-VITD-60K', name:'Vitamin D3 60K (4x1)',      supplier:'NutraLife',lead:14, stock:1200,ads:8,  min:200, max:800, cost:28,  expiry:'2027-01-31'},
+  {sku:'PH-INSU-GL',  name:'Insulin Glargine 100IU',    supplier:'BioPharm', lead:12, stock:30,  ads:7,  min:60,  max:200, cost:410, expiry:'2026-12-05'},
+  {sku:'PH-OMEP-20',  name:'Omeprazole 20mg (10x10)',   supplier:'HealWell', lead:6,  stock:260, ads:22, min:200, max:900, cost:18,  expiry:'2027-09-30'},
+  {sku:'PH-COUGH-SY', name:'Cough Syrup 100ml',         supplier:'NutraLife',lead:9,  stock:70,  ads:12, min:120, max:500, cost:33,  expiry:'2026-11-28'},
+  {sku:'PH-CETZ-10',  name:'Cetirizine 10mg (10x10)',   supplier:'MediCorp', lead:7,  stock:1800,ads:14, min:300, max:1000,cost:9,   expiry:'2027-03-15'},
+  {sku:'PH-METF-500', name:'Metformin 500mg (20x10)',   supplier:'BioPharm', lead:8,  stock:150, ads:40, min:300, max:1200,cost:16,  expiry:'2027-11-30'},
+  {sku:'PH-ORS-SACH', name:'ORS Sachets (box 100)',     supplier:'HealWell', lead:5,  stock:2200,ads:6,  min:200, max:700, cost:4,   expiry:'2026-12-31'},
+  {sku:'PH-DICLO-50', name:'Diclofenac 50mg (10x10)',   supplier:'MediCorp', lead:7,  stock:95,  ads:16, min:150, max:600, cost:11,  expiry:'2027-02-28'},
+  {sku:'PH-BCOMP-SY', name:'B-Complex Syrup 200ml',     supplier:'NutraLife',lead:11, stock:640, ads:5,  min:120, max:400, cost:38,  expiry:'2026-11-10'},
+];
+
+const days=(d)=>Math.round((new Date(d)-today)/86400000);
+const inr=(n)=>'₹'+Math.round(n).toLocaleString('en-IN');
+
+// derive metrics
+SKUS.forEach(s=>{
+  s.doc = s.ads>0 ? Math.round(s.stock/s.ads) : 999;        // days of cover
+  s.ltDemand = s.ads*s.lead;                                 // demand over lead time
+  s.safety = Math.round(s.ads*s.lead*0.5);                   // simple safety stock
+  s.reorderPoint = s.ltDemand + s.safety;
+  s.needReorder = s.stock <= s.reorderPoint || s.stock < s.min;
+  s.reorderQty = s.needReorder ? Math.max(s.max - s.stock, 0) : 0;
+  s.daysToExp = days(s.expiry);
+  s.unitsBeforeExp = Math.round(s.ads * s.daysToExp);        // units likely to sell before expiry
+  s.atRiskUnits = Math.max(s.stock - s.unitsBeforeExp, 0);   // won't clear in time
+  s.expiryFlag = s.daysToExp <= 90;                          // 3-month rule
+  s.stockValue = s.stock*s.cost;
+  s.riskValue = s.atRiskUnits*s.cost;
+  s.slow = s.doc > 60;                                       // slow-moving threshold
+});
+
+const badge=(t,c)=>`<span class="badge ${c}">${t}</span>`;
+
+function renderKpis(view){
+  const k=document.getElementById('kpis');
+  const totalStockVal=SKUS.reduce((a,s)=>a+s.stockValue,0);
+  const reorderCount=SKUS.filter(s=>s.needReorder).length;
+  const expiryCount=SKUS.filter(s=>s.expiryFlag).length;
+  const riskVal=SKUS.reduce((a,s)=>a+s.riskValue,0);
+  const slowCount=SKUS.filter(s=>s.slow).length;
+  let cards=[];
+  if(view==='reorder') cards=[['blue',reorderCount,'SKUs to reorder'],['amber',SKUS.filter(s=>s.stock<s.min).length,'Below minimum'],['teal',inr(SKUS.filter(s=>s.needReorder).reduce((a,s)=>a+s.reorderQty*s.cost,0)),'Reorder value']];
+  else if(view==='slow') cards=[['amber',slowCount,'Slow-moving SKUs'],['blue',inr(SKUS.filter(s=>s.slow).reduce((a,s)=>a+s.stockValue,0)),'Capital tied up'],['teal',Math.max(...SKUS.map(s=>s.doc)).toString()+'d','Highest days-of-cover']];
+  else if(view==='expiry') cards=[['red',expiryCount,'Batches expiring < 3 mo'],['red',inr(riskVal),'Value at expiry risk'],['amber',SKUS.filter(s=>s.expiryFlag).reduce((a,s)=>a+s.atRiskUnits,0),'Units to return']];
+  else cards=[['teal',inr(totalStockVal),'Total stock value'],['blue',reorderCount,'Reorder actions'],['red',inr(riskVal),'Expiry exposure'],['amber',slowCount,'Slow movers']];
+  k.innerHTML=cards.map(c=>`<div class="kpi ${c[0]}"><div class="v">${c[1]}</div><div class="l">${c[2]}</div></div>`).join('');
+}
+
+function tbl(id, head, rows){
+  document.getElementById(id).innerHTML='<thead><tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody>'+rows+'</tbody>';
+}
+
+function renderAll(){
+  // Reorder
+  const ro=SKUS.filter(s=>s.needReorder).sort((a,b)=>a.stock/a.reorderPoint-b.stock/b.reorderPoint);
+  tbl('t-reorder',['SKU','Product','Supplier','Lead','Stock','Reorder pt','Suggest qty','Action'],
+    ro.map(s=>`<tr><td>${s.sku}</td><td>${s.name}</td><td>${s.supplier}</td><td class="num">${s.lead}d</td>
+      <td class="num">${s.stock}</td><td class="num">${s.reorderPoint}</td><td class="num"><b>${s.reorderQty}</b></td>
+      <td>${s.stock<s.min?badge('URGENT','b-red'):badge('reorder','b-amber')} <span class="action">confirm PO</span></td></tr>`).join(''));
+
+  // Slow
+  const sm=SKUS.filter(s=>s.slow).sort((a,b)=>b.doc-a.doc);
+  tbl('t-slow',['SKU','Product','Stock','Avg daily','Days of cover','Capital tied','Trend'],
+    sm.map(s=>`<tr><td>${s.sku}</td><td>${s.name}</td><td class="num">${s.stock}</td><td class="num">${s.ads}</td>
+      <td class="num">${badge(s.doc+'d', s.doc>120?'b-red':'b-amber')}</td><td class="num">${inr(s.stockValue)}</td>
+      <td><div class="bar"><span style="width:${Math.min(s.doc/2,100)}%"></span></div></td></tr>`).join(''));
+
+  // Expiry
+  const ex=SKUS.filter(s=>s.expiryFlag).sort((a,b)=>a.daysToExp-b.daysToExp);
+  tbl('t-expiry',['SKU','Product','Supplier','Expiry','Days left','Stock','Won\'t clear','Value at risk','Action'],
+    ex.map(s=>`<tr><td>${s.sku}</td><td>${s.name}</td><td>${s.supplier}</td><td>${s.expiry}</td>
+      <td class="num">${badge(s.daysToExp+'d', s.daysToExp<45?'b-red':'b-amber')}</td><td class="num">${s.stock}</td>
+      <td class="num">${s.atRiskUnits}</td><td class="num">${inr(s.riskValue)}</td>
+      <td>${s.atRiskUnits>0?'<span class="action">return → credit note</span>':badge('will clear','b-green')}</td></tr>`).join(''));
+
+  // Mgmt
+  const sup={};
+  SKUS.forEach(s=>{sup[s.supplier]=sup[s.supplier]||{stock:0,risk:0,reorder:0};sup[s.supplier].stock+=s.stockValue;sup[s.supplier].risk+=s.riskValue;sup[s.supplier].reorder+=s.needReorder?1:0;});
+  tbl('t-mgmt',['Supplier','Stock value','Expiry exposure','Reorder actions','Risk %'],
+    Object.entries(sup).sort((a,b)=>b[1].risk-a[1].risk).map(([k,v])=>`<tr><td>${k}</td><td class="num">${inr(v.stock)}</td>
+      <td class="num">${inr(v.risk)}</td><td class="num">${v.reorder}</td>
+      <td class="num">${badge((v.stock? (v.risk/v.stock*100):0).toFixed(1)+'%', v.risk/v.stock>0.1?'b-red':'b-green')}</td></tr>`).join(''));
+}
+
+function show(view){
+  document.querySelectorAll('.role').forEach(r=>r.classList.toggle('active',r.dataset.v===view));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='v-'+view));
+  renderKpis(view);
+}
+document.getElementById('roles').addEventListener('click',e=>{const r=e.target.closest('.role');if(r)show(r.dataset.v);});
+
+renderAll();
+show('reorder');
+</script>
+</body>
+</html>
